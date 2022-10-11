@@ -3,15 +3,17 @@ package ru.tim.photogallery
 import android.util.Log
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
-import ru.tim.photogallery.api.FlickrApi
-import ru.tim.photogallery.api.PhotoResponse
 
-class PhotoGalleryPagingSource(private val flickrFetcher: FlickrFetcher) :
+class PhotoGalleryPagingSource(
+    private val flickrFetcher: FlickrFetcher,
+    private val query: String
+) :
     PagingSource<Int, GalleryItem>() {
 
     override fun getRefreshKey(state: PagingState<Int, GalleryItem>): Int? {
         return state.anchorPosition?.let { anchorPosition ->
             val anchorPage = state.closestPageToPosition(anchorPosition)
+            Log.i("RRRRr", "getRefreshKey")
             anchorPage?.prevKey?.plus(1) ?: anchorPage?.nextKey?.minus(1)
         }
     }
@@ -19,14 +21,21 @@ class PhotoGalleryPagingSource(private val flickrFetcher: FlickrFetcher) :
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, GalleryItem> {
         return try {
             val nextPageNumber = params.key ?: 1
-            val response = flickrFetcher.fetchPhotos(nextPageNumber)
+            Log.i("RRRRr", "page $nextPageNumber")
+
+            val response = if (query.isBlank()) {
+                flickrFetcher.fetchPhotos(nextPageNumber)
+            } else {
+                flickrFetcher.searchPhotos(query, nextPageNumber)
+            }
+
             LoadResult.Page(
                 data = response.galleryItems,
                 prevKey = null,
                 nextKey = if (response.page < response.pages) response.page + 1 else null
             )
         } catch (e: Exception) {
-            Log.e("PG", "exep", e)
+            Log.e("EEEE", "exep", e)
             LoadResult.Error(e)
         }
     }

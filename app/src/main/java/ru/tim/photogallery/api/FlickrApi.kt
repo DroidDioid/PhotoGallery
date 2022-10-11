@@ -1,6 +1,7 @@
 package ru.tim.photogallery.api
 
 import com.google.gson.GsonBuilder
+import okhttp3.OkHttpClient
 import retrofit2.Call
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -10,24 +11,11 @@ import ru.tim.photogallery.PhotoDeserializer
 
 interface FlickrApi {
 
-    @GET(
-        "services/rest/?method=flickr.interestingness.getList" +
-                "&api_key=1d28696a42f622145ec2d65d23c1efda" +
-                "&extras=url_s" +
-                "&format=json" +
-                "&nojsoncallback=1"
-    )
-    fun fetchPhotos(): Call<PhotoResponse>
-
-    @GET(
-        "services/rest/?method=flickr.interestingness.getList" +
-                "&api_key=1d28696a42f622145ec2d65d23c1efda" +
-                "&extras=url_s" +
-                "&format=json" +
-                "&nojsoncallback=1" +
-                "&per_page=30"
-    )
+    @GET("services/rest/?method=flickr.interestingness.getList")
     fun fetchPhotos(@Query("page") page: Int): Call<PhotoResponse>
+
+    @GET("services/rest/?method=flickr.photos.search")
+    fun searchPhotos(@Query("text") query: String, @Query("page") page: Int): Call<PhotoResponse>
 
     companion object Factory {
 
@@ -37,9 +25,14 @@ interface FlickrApi {
             GsonBuilder().registerTypeAdapter(PhotoResponse::class.java, PhotoDeserializer())
                 .create()
 
+        private val client = OkHttpClient.Builder()
+            .addInterceptor(PhotoInterceptor())
+            .build()
+
         private val retrofit = Retrofit.Builder()
             .baseUrl(BASE_URL)
             .addConverterFactory(GsonConverterFactory.create(gson))
+            .client(client)
             .build()
 
         val flickrApi: FlickrApi = retrofit.create(FlickrApi::class.java)

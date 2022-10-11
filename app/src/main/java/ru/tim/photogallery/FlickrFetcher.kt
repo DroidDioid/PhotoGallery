@@ -1,9 +1,6 @@
 package ru.tim.photogallery
 
 import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.observe
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -17,33 +14,25 @@ class FlickrFetcher(private val flickrApi: FlickrApi) {
 
     private lateinit var flickrRequest: Call<PhotoResponse>
 
-    fun fetchPhotos(): LiveData<List<GalleryItem>> {
-        val responseLiveData = MutableLiveData<List<GalleryItem>>()
-        flickrRequest = flickrApi.fetchPhotos()
-
-        flickrRequest.enqueue(object : Callback<PhotoResponse> {
-
-            override fun onFailure(call: Call<PhotoResponse>, t: Throwable) {
-                Log.e(TAG, "Failed to fetch photos", t)
-            }
-
-            override fun onResponse(call: Call<PhotoResponse>, response: Response<PhotoResponse>) {
-                Log.d(TAG, "Response received: ${response.body()}")
-                val photoResponse = response.body()
-                var galleryItems = photoResponse?.galleryItems ?: mutableListOf()
-                galleryItems = galleryItems.filterNot { it.url.isBlank() }
-
-                responseLiveData.value = galleryItems
-            }
-        })
-
-        return responseLiveData
+    fun fetchPhotosRequest(page: Int): Call<PhotoResponse> {
+        return flickrApi.fetchPhotos(page)
     }
 
     suspend fun fetchPhotos(page: Int): PhotoResponse {
-        return suspendCoroutine { continuation ->
-            flickrRequest = flickrApi.fetchPhotos(page)
+        return fetchPhotosMetaData(fetchPhotosRequest(page))
+    }
 
+    fun searchPhotosRequest(text: String, page: Int): Call<PhotoResponse> {
+        return flickrApi.searchPhotos(text, page)
+    }
+
+    suspend fun searchPhotos(text: String, page: Int): PhotoResponse {
+        return fetchPhotosMetaData(searchPhotosRequest(text, page))
+    }
+
+    private suspend fun fetchPhotosMetaData(flickrRequest: Call<PhotoResponse>): PhotoResponse {
+        this.flickrRequest = flickrRequest
+        return suspendCoroutine { continuation ->
             flickrRequest.enqueue(object : Callback<PhotoResponse> {
 
                 override fun onFailure(call: Call<PhotoResponse>, t: Throwable) {
